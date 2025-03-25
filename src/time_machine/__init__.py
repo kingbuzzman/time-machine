@@ -403,7 +403,7 @@ if HAVE_PYTEST:  # pragma: no branch
     MARKER_NAME = "time_machine"
     FIXTURE_NAME = "time_machine"
 
-    def pytest_collection_modifyitems(items):
+    def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         """
         Inject our fixture into any tests with our marker
         """
@@ -411,7 +411,7 @@ if HAVE_PYTEST:  # pragma: no branch
             if item.get_closest_marker(MARKER_NAME):
                 item.fixturenames.insert(0, FIXTURE_NAME)
 
-    def pytest_configure(config):
+    def pytest_configure(config: pytest.Config) -> None:
         """
         Register our marker
         """
@@ -455,7 +455,7 @@ if HAVE_PYTEST:  # pragma: no branch
 
     @pytest.fixture(name=FIXTURE_NAME)
     def time_machine_fixture(
-        request,
+        request -> pytest.FixtureRequest,
     ) -> TypingGenerator[TimeMachineFixture, None, None]:
         fixture = TimeMachineFixture()
         marker = request.node.get_closest_marker(MARKER_NAME)

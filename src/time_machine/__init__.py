@@ -403,7 +403,7 @@ if HAVE_PYTEST:  # pragma: no branch
     MARKER_NAME = "time_machine"
     FIXTURE_NAME = "time_machine"
 
-    def pytest_collection_modifyitems(items: list[pytest.FixtureRequest]) -> None:
+    def pytest_collection_modifyitems(items: list[pytest.Node]) -> None:
         """
         Inject our fixture into any tests with our marker
         """

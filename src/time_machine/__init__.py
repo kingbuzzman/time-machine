@@ -403,6 +403,14 @@ if HAVE_PYTEST:  # pragma: no branch
     MARKER_NAME = "time_machine"
     FIXTURE_NAME = "time_machine"
 
+    def pytest_collection_modifyitems(items):
+        """
+        Inject our fixture into any tests with our marker
+        """
+        for item in items:
+            if item.get_closest_marker(MARKER_NAME):
+                item.fixturenames.insert(0, FIXTURE_NAME)
+
     def pytest_configure(config):
         """
         Register our marker

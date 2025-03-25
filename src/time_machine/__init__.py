@@ -455,7 +455,7 @@ if HAVE_PYTEST:  # pragma: no branch
 
     @pytest.fixture(name=FIXTURE_NAME)
     def time_machine_fixture(
-        request -> pytest.FixtureRequest,
+        request: pytest.FixtureRequest,
     ) -> TypingGenerator[TimeMachineFixture, None, None]:
         fixture = TimeMachineFixture()
         marker = request.node.get_closest_marker(MARKER_NAME)

@@ -446,7 +446,7 @@ if HAVE_PYTEST:  # pragma: no branch
                 self.traveller.stop()
 
     @pytest.fixture(name=FIXTURE_NAME)
-    def time_machine_fixture() -> TypingGenerator[TimeMachineFixture, None, None]:
+    def time_machine_fixture(request) -> TypingGenerator[TimeMachineFixture, None, None]:
         fixture = TimeMachineFixture()
         marker = request.node.get_closest_marker(MARKER_NAME)
         if marker:

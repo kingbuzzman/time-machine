@@ -409,7 +409,7 @@ if HAVE_PYTEST:  # pragma: no branch
         """
         for item in items:
             if item.get_closest_marker(MARKER_NAME):
-                item.fixturenames.insert(0, FIXTURE_NAME)
+                item.fixturenames.insert(0, FIXTURE_NAME)  # type: ignore[attr-defined]
 
     def pytest_configure(config: pytest.Config) -> None:
         """

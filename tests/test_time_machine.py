@@ -847,9 +847,16 @@ def test_marker(testdir):
         import pytest
         import time
 
+        def get_id():
+            return int(time.time())
+
         @pytest.fixture
         def current_time():
              return time.time()
+
+        @pytest.fixture
+        def set_time(time_machine):
+             time_machine.move_to("2000-01-01")
 
         def test_normal(current_time):
             assert current_time > 1742943111.0
@@ -860,6 +867,10 @@ def test_marker(testdir):
             time_machine.shift(1)
             assert current_time == 946684800.0
             assert int(time.time()) == 946684801
+
+        @pytest.mark.usefixtures("set_time")
+        def test_with_decorator():
+            assert get_id() == 946684800
     """
     )
 

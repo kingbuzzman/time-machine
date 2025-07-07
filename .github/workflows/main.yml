@@ -45,7 +45,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv venv .venv
-        .venv/bin/uv pip install tox tox-uv
+        uv pip install --python .venv/bin/python tox tox-uv
 
     - name: Run tox targets for ${{ matrix.python-version }}
       run: .venv/bin/tox run -f py$(echo ${{ matrix.python-version }} | tr -d .)

@@ -837,7 +837,7 @@ def test_fixture_shift_without_move_to(time_machine):
     )
 
 
-def test_marker(testdir):
+def test_standalone_marker(testdir):
     testdir.makepyfile(
         """
         import pytest

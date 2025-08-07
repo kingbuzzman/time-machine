@@ -1,48 +1,8 @@
-============
-time-machine
-============
-
-.. image:: https://img.shields.io/readthedocs/time-machine?style=for-the-badge
-   :target: https://time-machine.readthedocs.io/en/latest/
-
-.. image:: https://img.shields.io/github/actions/workflow/status/adamchainz/time-machine/main.yml.svg?branch=main&style=for-the-badge
-   :target: https://github.com/adamchainz/time-machine/actions?workflow=CI
-
-.. image:: https://img.shields.io/badge/Coverage-100%25-success?style=for-the-badge
-   :target: https://github.com/adamchainz/time-machine/actions?workflow=CI
-
-.. image:: https://img.shields.io/pypi/v/time-machine.svg?style=for-the-badge
-   :target: https://pypi.org/project/time-machine/
-
-.. image:: https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge
-   :target: https://github.com/psf/black
-
-.. image:: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white&style=for-the-badge
-   :target: https://github.com/pre-commit/pre-commit
-   :alt: pre-commit
-
-----
-
-.. figure:: https://raw.githubusercontent.com/adamchainz/time-machine/main/docs/_static/logo.svg
-  :alt: time-machine logo
-  :align: center
-
-Documentation
-=============
-
-
-Time is a global state.
-Any concurrent threads or asynchronous functions are also be affected.
-Some aren't ready for time to move so rapidly or backwards, and may crash or produce unexpected results.
-
-Also beware that other processes are not affected.
-For example, if you use SQL datetime functions on a database server, they will return the real time.
-
+==========
 Comparison
 ==========
 
-There are some prior libraries that try to achieve the same thing.
-They have their own strengths and weaknesses.
+There are some prior libraries that try to achieve the same thing, with their own strengths and weaknesses.
 Here's a quick comparison.
 
 unittest.mock
@@ -110,33 +70,3 @@ It's also possible such python libraries can be added to the set mocked by time-
 
 One drawback is that it only works with CPython, so can't be used with other Python interpreters like PyPy.
 However it may possible to extend it to support other interpreters through different mocking mechanisms.
-
-Migrating from libfaketime or freezegun
-=======================================
-
-freezegun has a useful API, and python-libfaketime copies some of it, with a different function name.
-time-machine also copies some of freezegun's API, in ``travel()``\'s ``destination``, and ``tick`` arguments, and the ``shift()`` method.
-There are a few differences:
-
-* time-machine's ``tick`` argument defaults to ``True``, because code tends to make the (reasonable) assumption that time progresses whilst running, and should normally be tested as such.
-  Testing with time frozen can make it easy to write complete assertions, but it's quite artificial.
-  Write assertions against time ranges, rather than against exact values.
-
-* freezegun interprets dates and naive datetimes in the local time zone (including those parsed from strings with ``dateutil``).
-  This means tests can pass when run in one time zone and fail in another.
-  time-machine instead interprets dates and naive datetimes in UTC so they are fixed points in time.
-  Provide time zones where required.
-
-* freezegun's ``tick()`` method has been implemented as ``shift()``, to avoid confusion with the ``tick`` argument.
-  It also requires an explicit delta rather than defaulting to 1 second.
-
-* freezegun's ``tz_offset`` argument is not supported, since it only partially mocks the current time zone.
-  Time zones are more complicated than a single offset from UTC, and freezegun only uses the offset in ``time.localtime()``.
-  Instead, time-machine will mock the current time zone if you give it a ``datetime`` with a ``ZoneInfo`` timezone.
-
-Some features aren't supported like the ``auto_tick_seconds`` argument.
-These may be added in a future release.
-
-If you are only fairly simple function calls, you should be able to migrate by replacing calls to ``freezegun.freeze_time()`` and ``libfaketime.fake_time()`` with ``time_machine.travel()``.
-=======
-Please see https://time-machine.readthedocs.io/.

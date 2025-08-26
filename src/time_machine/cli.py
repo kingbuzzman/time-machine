@@ -340,7 +340,12 @@ def generate_callbacks(state: State) -> Mapping[Offset, list[TokenFunc]]:
             ret[ast_start_offset(node)].append(replace_import)
 
     for node in state.import_from_nodes:
-        ret[ast_start_offset(node)].append(partial(replace_import_from, node=node))
+        if has_freezer_fixtures:
+            # Remove import entirely when converting to pytest.mark
+            ret[ast_start_offset(node)].append(remove_import)
+        else:
+            # Convert to time_machine import when no freezer fixtures
+            ret[ast_start_offset(node)].append(partial(replace_import_from, node=node))
 
     # Handle freezer arguments
     for arg in state.freezer_args:
@@ -357,14 +362,14 @@ def generate_callbacks(state: State) -> Mapping[Offset, list[TokenFunc]]:
         ret[ast_start_offset(call.func.value)].append(
             partial(replace_freezer_name, node=call.func.value)
         )
-        ret[ast_start_offset(call)].append(partial(add_tick_false, node=call))
+        ret[ast_start_offset(call)].append(partial(add_tick_value, node=call))
 
     # Handle freezer method calls (with tick=False)
     for call in state.freezer_method_calls_with_tick:
         ret[ast_start_offset(call.func.value)].append(
             partial(replace_freezer_name, node=call.func.value)
         )
-        ret[ast_start_offset(call)].append(partial(add_tick_false, node=call))
+        ret[ast_start_offset(call)].append(partial(add_tick_value, node=call))
 
     # Handle freezer method calls with specific tick values from decorators
     for call, tick_value in state.freezer_method_calls_with_tick_value:
@@ -418,14 +423,14 @@ def generate_callbacks(state: State) -> Mapping[Offset, list[TokenFunc]]:
             ret[ast_start_offset(decorator.func)].append(
                 partial(switch_to_travel, node=decorator.func)
             )
-        ret[ast_start_offset(decorator)].append(partial(add_tick_false, node=decorator))
+        ret[ast_start_offset(decorator)].append(partial(add_tick_value, node=decorator))
 
     # Handle pytest.mark.freeze_time decorators
     for decorator in state.pytest_mark_decorators:
         ret[ast_start_offset(decorator.func)].append(
             partial(replace_pytest_mark, node=decorator.func)
         )
-        ret[ast_start_offset(decorator)].append(partial(add_tick_false, node=decorator))
+        ret[ast_start_offset(decorator)].append(partial(add_tick_value, node=decorator))
 
     # Handle with statements
     for context_expr in state.freeze_time_with_statements:
@@ -433,7 +438,7 @@ def generate_callbacks(state: State) -> Mapping[Offset, list[TokenFunc]]:
             partial(switch_to_traveller, node=context_expr.func)
         )
         ret[ast_start_offset(context_expr)].append(
-            partial(add_tick_false, node=context_expr)
+            partial(add_tick_value, node=context_expr)
         )
 
     return ret
@@ -503,7 +508,7 @@ TokenFunc = Callable[[list[Token], int], None]
 def migratable_call(node: ast.Call) -> bool:
     return (
         len(node.args) == 1
-        # Allow tick keyword argument, we handle it properly in add_tick_false
+        # Allow tick keyword argument, we handle it properly in add_tick_value
         and (
             len(node.keywords) == 0
             or (len(node.keywords) == 1 and node.keywords[0].arg == "tick")
@@ -610,6 +615,7 @@ def replace_import(tokens: list[Token], i: int) -> None:
 def remove_import(tokens: list[Token], i: int) -> None:
     """Remove the import statement completely."""
     # Find the start of the import statement
+    # import pdb; pdb.set_trace()
     while i > 0 and not (tokens[i].name == "NAME" and tokens[i].src == "import"):
         i -= 1
     start = i
@@ -632,17 +638,6 @@ def replace_import_from(tokens: list[Token], i: int, node: ast.ImportFrom) -> No
 def replace_function_arg(tokens: list[Token], i: int, node: ast.Attr) -> None:
     j = find_last_token(tokens, i, node=node)
     tokens[i : j + 1] = [Token(name=CODE, src="time_machine")]
-
-
-def add_time_machine_param(tokens: list[Token], i: int, node: ast.FunctionDef) -> None:
-    """Add time_machine parameter to function that uses context managers."""
-    # Find the opening parenthesis of the function
-    while i < len(tokens) and tokens[i].src != "(":
-        i += 1
-    i += 1  # Move past the opening parenthesis
-
-    # Insert the time_machine parameter
-    tokens.insert(i, Token(name="NAME", src="time_machine"))
 
 
 def add_import_inside_function(
@@ -720,30 +715,14 @@ def replace_tick_with_shift(tokens: list[Token], i: int, node: ast.Call) -> None
 
     # If no arguments, add default argument of 1
     if len(node.args) == 0 and len(node.keywords) == 0:
-        # Find the opening parenthesis
-        j = i + 1
-        while j < len(tokens) and tokens[j].src != "(":
-            j += 1
-        j += 1  # Move past the opening parenthesis
-
+        j = i + 2
         # Insert "1" as the default argument
         tokens.insert(j, Token(name="NUMBER", src="1"))
 
 
-def add_tick_false(tokens: list[Token], i: int, node: ast.Call) -> None:
-    """
-    Add `tick=False` to the function call if it doesn't already have a tick argument.
-    """
-    # Check if the node already has a tick keyword argument
-    has_tick_arg = any(keyword.arg == "tick" for keyword in node.keywords)
-
-    if not has_tick_arg:
-        j = find_last_token(tokens, i, node=node)
-        tokens.insert(j, Token(name=CODE, src=", tick=False"))
-
 
 def add_tick_value(
-    tokens: list[Token], i: int, node: ast.Call, tick_value: bool
+    tokens: list[Token], i: int, node: ast.Call, tick_value: bool = False
 ) -> None:
     """
     Add `tick=True` or `tick=False` to the function call based on the tick_value.

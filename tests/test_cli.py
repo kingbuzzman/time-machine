@@ -819,9 +819,10 @@ class TestMigrateContents:
         check_transformed(
             """
             import freezegun
+            from freezegun import freeze_time
             import pytest
 
-            @freezegun.freeze_time("2000-01-01", tick=True)
+            @freeze_time("2000-01-01", tick=True)
             def test_function(freezer):
                 freezer.move_to("2023-01-01")
 
@@ -829,12 +830,13 @@ class TestMigrateContents:
                 with freezegun.freeze_time("2000-01-01", tick=True) as t:
                     t.move_to("2023-01-01")
                     t.tick()
+                    t.tick(10)
 
             @pytest.mark.freeze_time("2000-01-01", tick=False)
             def test_function3(freezer):
                 freezer.move_to("2023-01-01")
             """,
-            """
+            """\
             import pytest
 
             @pytest.mark.time_machine("2000-01-01", tick=True)
@@ -846,6 +848,7 @@ class TestMigrateContents:
                 with time_machine.travel("2000-01-01", tick=True) as t:
                     t.move_to("2023-01-01", tick=True)
                     t.shift(1)
+                    t.shift(10)
 
             @pytest.mark.time_machine("2000-01-01", tick=False)
             def test_function3(time_machine):

@@ -710,6 +710,10 @@ def replace_tick_with_shift(tokens: list[Token], i: int, node: ast.Call) -> None
     ):
         i += 1
 
+    # Bound check for tokens
+    if i >= len(tokens):
+        return
+
     # Replace "tick" with "shift"
     tokens[i] = Token(name="NAME", src="shift")
 

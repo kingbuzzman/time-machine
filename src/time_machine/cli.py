@@ -332,11 +332,11 @@ def generate_callbacks(state: State) -> Mapping[Offset, list[TokenFunc]]:
 
     # Handle imports
     for node in state.import_nodes:
-        if has_freezer_fixtures:
-            # Remove import entirely when converting to pytest.mark
+        if has_freezer_fixtures and not state.freeze_time_with_statements:
+            # Remove import entirely when converting to pytest.mark and no standalone with statements
             ret[ast_start_offset(node)].append(remove_import)
         else:
-            # Convert to time_machine import when no freezer fixtures
+            # Convert to time_machine import when no freezer fixtures OR when there are standalone with statements
             ret[ast_start_offset(node)].append(replace_import)
 
     for node in state.import_from_nodes:

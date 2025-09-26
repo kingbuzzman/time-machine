@@ -332,11 +332,11 @@ def generate_callbacks(state: State) -> Mapping[Offset, list[TokenFunc]]:
 
     # Handle imports
     for node in state.import_nodes:
-        if has_freezer_fixtures:
-            # Remove import entirely when converting to pytest.mark
+        if has_freezer_fixtures and not state.freeze_time_with_statements:
+            # Remove import entirely when converting to pytest.mark and no standalone with statements
             ret[ast_start_offset(node)].append(remove_import)
         else:
-            # Convert to time_machine import when no freezer fixtures
+            # Convert to time_machine import when no freezer fixtures OR when there are standalone with statements
             ret[ast_start_offset(node)].append(replace_import)
 
     for node in state.import_from_nodes:
@@ -503,10 +503,10 @@ TokenFunc = Callable[[list[Token], int], None]
 def migratable_call(node: ast.Call) -> bool:
     return (
         len(node.args) == 1
-        # Allow tick keyword argument, we handle it properly in add_tick_false
+        # Allow tick and auto_tick_seconds keyword arguments
         and (
             len(node.keywords) == 0
-            or (len(node.keywords) == 1 and node.keywords[0].arg == "tick")
+            or (len(node.keywords) == 1 and node.keywords[0].arg in ("tick", "auto_tick_seconds"))
         )
     )
 
@@ -715,6 +715,10 @@ def replace_tick_with_shift(tokens: list[Token], i: int, node: ast.Call) -> None
     ):
         i += 1
 
+    # Bounds check for tokens
+    if i >= len(tokens):
+        return
+
     # Replace "tick" with "shift"
     tokens[i] = Token(name="NAME", src="shift")
 
@@ -733,13 +737,61 @@ def replace_tick_with_shift(tokens: list[Token], i: int, node: ast.Call) -> None
 def add_tick_false(tokens: list[Token], i: int, node: ast.Call) -> None:
     """
     Add `tick=False` to the function call if it doesn't already have a tick argument.
+    Handle conversion of auto_tick_seconds to tick.
     """
     # Check if the node already has a tick keyword argument
     has_tick_arg = any(keyword.arg == "tick" for keyword in node.keywords)
+    
+    # Check for auto_tick_seconds and convert to tick
+    auto_tick_value = None
+    for keyword in node.keywords:
+        if keyword.arg == "auto_tick_seconds":
+            # Convert auto_tick_seconds to tick: non-zero means tick=True
+            if hasattr(keyword.value, 'value'):
+                auto_tick_value = keyword.value.value != 0
+            break
 
     if not has_tick_arg:
         j = find_last_token(tokens, i, node=node)
-        tokens.insert(j, Token(name=CODE, src=", tick=False"))
+        if auto_tick_value is not None:
+            # Replace auto_tick_seconds with tick
+            tick_str = "True" if auto_tick_value else "False"
+            # Remove auto_tick_seconds and add tick
+            tokens.insert(j, Token(name=CODE, src=f", tick={tick_str}"))
+            # Remove the auto_tick_seconds argument
+            remove_auto_tick_seconds(tokens, i, node)
+        else:
+            tokens.insert(j, Token(name=CODE, src=", tick=False"))
+
+
+def remove_auto_tick_seconds(tokens: list[Token], i: int, node: ast.Call) -> None:
+    """
+    Remove the auto_tick_seconds argument from the token stream.
+    """
+    # Find the auto_tick_seconds keyword and remove it
+    # This is a bit complex because we need to remove the keyword, equals, and value
+    # Plus handle comma separation properly
+    j = i
+    while j < len(tokens):
+        if tokens[j].name == "NAME" and tokens[j].src == "auto_tick_seconds":
+            # Found the start of auto_tick_seconds
+            start = j
+            
+            # Find the end (look for comma or closing paren)
+            while j < len(tokens) and tokens[j].src not in (",", ")"):
+                j += 1
+                
+            # If we found a comma, include it in removal (prefer removing trailing comma)
+            if j < len(tokens) and tokens[j].src == ",":
+                j += 1
+            # If no trailing comma, look for leading comma
+            elif start > i and tokens[start - 1].src == ",":
+                start -= 1
+                
+            # Remove the tokens
+            del tokens[start:j]
+            break
+        j += 1
 
 
 def add_tick_value(
